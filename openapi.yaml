@@ -1,0 +1,676 @@
+openapi: 3.0.3
+info:
+  title: Shapemint
+  version: 0.1.0
+  description: Influence-and-incentive ledger measuring third-party impact on AI model behaviour.
+  x-product-slug: ai-decentralized-shapemint
+  x-source: ai-in-decentralized+ai/decentralizedai-boston-181007051624/
+servers:
+- url: https://api.example.com
+tags:
+- name: Contributions
+  description: Model updates, data refs, HITL batches
+- name: Influence
+  description: Quantified influence scores
+- name: Incentives
+  description: Policy-mapped rewards
+- name: Protocols
+  description: In-scope evaluation protocols
+- name: Governance
+  description: Pause and negative-influence rulings
+- name: Reporting
+  description: Audit exports
+paths:
+  /v1/contributions:
+    get:
+      operationId: listContributions
+      tags:
+      - Contributions
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListEnvelopeContribution'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+    post:
+      operationId: submitContribution
+      tags:
+      - Contributions
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataEnvelopeContribution'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributionCreate'
+  /v1/contributions/{contributionId}/influence:
+    post:
+      operationId: scoreInfluence
+      tags:
+      - Influence
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataEnvelopeInfluenceScore'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      parameters:
+      - name: contributionId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfluenceScore'
+    get:
+      operationId: getInfluence
+      tags:
+      - Influence
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataEnvelopeInfluenceScore'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      parameters:
+      - name: contributionId
+        in: path
+        required: true
+        schema:
+          type: string
+  /v1/incentives:
+    get:
+      operationId: listIncentives
+      tags:
+      - Incentives
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListEnvelopeIncentiveObligation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+    post:
+      operationId: mintIncentive
+      tags:
+      - Incentives
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataEnvelopeIncentiveObligation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncentiveMint'
+  /v1/protocols:
+    get:
+      operationId: listProtocols
+      tags:
+      - Protocols
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListEnvelopeEvaluationProtocol'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+    post:
+      operationId: createProtocol
+      tags:
+      - Protocols
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataEnvelopeEvaluationProtocol'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluationProtocol'
+  /v1/governance/negative-influence:
+    post:
+      operationId: ruleNegativeInfluence
+      tags:
+      - Governance
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataEnvelopeNegativeInfluenceRuling'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NegativeInfluenceRuling'
+  /v1/governance/minting-pause:
+    post:
+      operationId: pauseMinting
+      tags:
+      - Governance
+      security:
+      - BearerAuth: []
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataEnvelopeMintingPause'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MintingPause'
+  /v1/reporting/influence-export:
+    get:
+      operationId: exportInfluenceLedger
+      tags:
+      - Reporting
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataEnvelopeInfluenceExport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableEntity:
+      description: Unprocessable entity
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    ResponseMeta:
+      type: object
+      required:
+      - requestId
+      - timestamp
+      properties:
+        requestId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    Problem:
+      type: object
+      required:
+      - type
+      - title
+      - status
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+    Contribution:
+      type: object
+      required:
+      - id
+      - modelId
+      - kind
+      properties:
+        id:
+          type: string
+        modelId:
+          type: string
+        contributorId:
+          type: string
+        kind:
+          type: string
+          enum:
+          - model_update
+          - data_ref
+          - hitl_batch
+        privacyMode:
+          type: boolean
+    ContributionCreate:
+      type: object
+      required:
+      - modelId
+      - kind
+      - contributorId
+      properties:
+        modelId:
+          type: string
+        kind:
+          type: string
+          enum:
+          - model_update
+          - data_ref
+          - hitl_batch
+        contributorId:
+          type: string
+        artefactRef:
+          type: string
+        privacyMode:
+          type: boolean
+    InfluenceScore:
+      type: object
+      required:
+      - id
+      - contributionId
+      - score
+      properties:
+        id:
+          type: string
+        contributionId:
+          type: string
+        score:
+          type: number
+        protocolId:
+          type: string
+        reproducible:
+          type: boolean
+    IncentiveObligation:
+      type: object
+      required:
+      - id
+      - contributionId
+      - amount
+      - status
+      properties:
+        id:
+          type: string
+        contributionId:
+          type: string
+        amount:
+          type: number
+        status:
+          type: string
+          enum:
+          - pending
+          - paid
+          - clawed_back
+    IncentiveMint:
+      type: object
+      required:
+      - contributionId
+      - policyId
+      properties:
+        contributionId:
+          type: string
+        policyId:
+          type: string
+    EvaluationProtocol:
+      type: object
+      required:
+      - id
+      - modelId
+      - inScopeBehaviours
+      properties:
+        id:
+          type: string
+        modelId:
+          type: string
+        inScopeBehaviours:
+          type: array
+          items:
+            type: string
+        version:
+          type: string
+    NegativeInfluenceRuling:
+      type: object
+      required:
+      - id
+      - contributionId
+      - outcome
+      properties:
+        id:
+          type: string
+        contributionId:
+          type: string
+        outcome:
+          type: string
+          enum:
+          - zero_pay
+          - clawback
+          - cleared
+        reason:
+          type: string
+    MintingPause:
+      type: object
+      required:
+      - id
+      - modelId
+      - active
+      properties:
+        id:
+          type: string
+        modelId:
+          type: string
+        active:
+          type: boolean
+        reason:
+          type: string
+    InfluenceExport:
+      type: object
+      required:
+      - generatedAt
+      - itemCount
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        itemCount:
+          type: integer
+        downloadUri:
+          type: string
+    DataEnvelopeContribution:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/Contribution'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ListEnvelopeContribution:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Contribution'
+            nextCursor:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    DataEnvelopeInfluenceScore:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/InfluenceScore'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ListEnvelopeInfluenceScore:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/InfluenceScore'
+            nextCursor:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    DataEnvelopeIncentiveObligation:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/IncentiveObligation'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ListEnvelopeIncentiveObligation:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/IncentiveObligation'
+            nextCursor:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    DataEnvelopeEvaluationProtocol:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/EvaluationProtocol'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ListEnvelopeEvaluationProtocol:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/EvaluationProtocol'
+            nextCursor:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    DataEnvelopeNegativeInfluenceRuling:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/NegativeInfluenceRuling'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ListEnvelopeNegativeInfluenceRuling:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/NegativeInfluenceRuling'
+            nextCursor:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    DataEnvelopeMintingPause:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/MintingPause'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ListEnvelopeMintingPause:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/MintingPause'
+            nextCursor:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    DataEnvelopeInfluenceExport:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          $ref: '#/components/schemas/InfluenceExport'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+    ListEnvelopeInfluenceExport:
+      type: object
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/InfluenceExport'
+            nextCursor:
+              type: string
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
