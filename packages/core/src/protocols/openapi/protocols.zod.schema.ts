@@ -1,0 +1,653 @@
+import { makeApi, Zodios, type ZodiosOptions } from '@zodios/core';
+import { z } from 'zod';
+
+const createProtocol_Body = z
+  .object({
+    modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+    name: z.string().min(1).max(200),
+    version: z.string().min(1).max(64),
+    inScopeBehaviours: z.array(z.string().min(1)).min(1),
+  })
+  .passthrough();
+const ProtocolStatus = z.enum(['draft', 'published', 'deprecated']);
+const EvaluationProtocol = z
+  .object({
+    protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+    modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+    name: z.string().min(1).max(200),
+    version: z.string().min(1).max(64),
+    inScopeBehaviours: z.array(z.string().min(1)).min(1),
+    status: z.enum(['draft', 'published', 'deprecated']),
+    publishedAt: z.string().datetime({ offset: true }).optional(),
+    createdAt: z.string().datetime({ offset: true }),
+    updatedAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const ProtocolCreateRequest = z
+  .object({
+    modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+    name: z.string().min(1).max(200),
+    version: z.string().min(1).max(64),
+    inScopeBehaviours: z.array(z.string().min(1)).min(1),
+  })
+  .passthrough();
+const ProtocolBindRequest = z
+  .object({ modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/) })
+  .passthrough();
+const ProtocolResponse = z
+  .object({
+    data: z
+      .object({
+        protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+        modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+        name: z.string().min(1).max(200),
+        version: z.string().min(1).max(64),
+        inScopeBehaviours: z.array(z.string().min(1)).min(1),
+        status: z.enum(['draft', 'published', 'deprecated']),
+        publishedAt: z.string().datetime({ offset: true }).optional(),
+        createdAt: z.string().datetime({ offset: true }),
+        updatedAt: z.string().datetime({ offset: true }),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const ProtocolListData = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+          modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+          name: z.string().min(1).max(200),
+          version: z.string().min(1).max(64),
+          inScopeBehaviours: z.array(z.string().min(1)).min(1),
+          status: z.enum(['draft', 'published', 'deprecated']),
+          publishedAt: z.string().datetime({ offset: true }).optional(),
+          createdAt: z.string().datetime({ offset: true }),
+          updatedAt: z.string().datetime({ offset: true }),
+        })
+        .passthrough()
+    ),
+  })
+  .passthrough();
+const ProtocolListResponse = z
+  .object({
+    data: z
+      .object({
+        items: z.array(
+          z
+            .object({
+              protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+              modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+              name: z.string().min(1).max(200),
+              version: z.string().min(1).max(64),
+              inScopeBehaviours: z.array(z.string().min(1)).min(1),
+              status: z.enum(['draft', 'published', 'deprecated']),
+              publishedAt: z.string().datetime({ offset: true }).optional(),
+              createdAt: z.string().datetime({ offset: true }),
+              updatedAt: z.string().datetime({ offset: true }),
+            })
+            .passthrough()
+        ),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const ModelId = z.string();
+const Problem = z
+  .object({
+    type: z.string().url(),
+    title: z.string(),
+    status: z.number().int(),
+    detail: z.string(),
+    instance: z.string().url(),
+    code: z.string(),
+  })
+  .partial()
+  .passthrough();
+const ProtocolId = z.string();
+const ResponseMeta = z
+  .object({
+    requestId: z.string().uuid(),
+    correlationId: z.string(),
+    generatedAt: z.string().datetime({ offset: true }),
+  })
+  .partial()
+  .passthrough();
+
+export const schemas: any = {
+  createProtocol_Body,
+  ProtocolStatus,
+  EvaluationProtocol,
+  ProtocolCreateRequest,
+  ProtocolBindRequest,
+  ProtocolResponse,
+  ProtocolListData,
+  ProtocolListResponse,
+  ModelId,
+  Problem,
+  ProtocolId,
+  ResponseMeta,
+};
+
+const endpoints = makeApi([
+  {
+    method: 'get',
+    path: '/v1/protocols',
+    alias: 'listProtocols',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'cursor',
+        type: 'Query',
+        schema: z.string().optional(),
+      },
+      {
+        name: 'limit',
+        type: 'Query',
+        schema: z.number().int().gte(1).lte(100).optional().default(25),
+      },
+      {
+        name: 'modelId',
+        type: 'Query',
+        schema: z
+          .string()
+          .regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/)
+          .optional(),
+      },
+      {
+        name: 'status',
+        type: 'Query',
+        schema: z.enum(['draft', 'published', 'deprecated']).optional(),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            items: z.array(
+              z
+                .object({
+                  protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+                  modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+                  name: z.string().min(1).max(200),
+                  version: z.string().min(1).max(64),
+                  inScopeBehaviours: z.array(z.string().min(1)).min(1),
+                  status: z.enum(['draft', 'published', 'deprecated']),
+                  publishedAt: z.string().datetime({ offset: true }).optional(),
+                  createdAt: z.string().datetime({ offset: true }),
+                  updatedAt: z.string().datetime({ offset: true }),
+                })
+                .passthrough()
+            ),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/protocols',
+    alias: 'createProtocol',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: createProtocol_Body,
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+            name: z.string().min(1).max(200),
+            version: z.string().min(1).max(64),
+            inScopeBehaviours: z.array(z.string().min(1)).min(1),
+            status: z.enum(['draft', 'published', 'deprecated']),
+            publishedAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 400,
+        description: `Malformed request`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'get',
+    path: '/v1/protocols/:protocolId',
+    alias: 'getProtocol',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'protocolId',
+        type: 'Path',
+        schema: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+            name: z.string().min(1).max(200),
+            version: z.string().min(1).max(64),
+            inScopeBehaviours: z.array(z.string().min(1)).min(1),
+            status: z.enum(['draft', 'published', 'deprecated']),
+            publishedAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/protocols/:protocolId/bind-model',
+    alias: 'bindProtocolToModel',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: z
+          .object({ modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/) })
+          .passthrough(),
+      },
+      {
+        name: 'protocolId',
+        type: 'Path',
+        schema: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+            name: z.string().min(1).max(200),
+            version: z.string().min(1).max(64),
+            inScopeBehaviours: z.array(z.string().min(1)).min(1),
+            status: z.enum(['draft', 'published', 'deprecated']),
+            publishedAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 400,
+        description: `Malformed request`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/protocols/:protocolId/deprecate',
+    alias: 'deprecateProtocol',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'protocolId',
+        type: 'Path',
+        schema: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+            name: z.string().min(1).max(200),
+            version: z.string().min(1).max(64),
+            inScopeBehaviours: z.array(z.string().min(1)).min(1),
+            status: z.enum(['draft', 'published', 'deprecated']),
+            publishedAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/protocols/:protocolId/publish',
+    alias: 'publishProtocol',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'protocolId',
+        type: 'Path',
+        schema: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            modelId: z.string().regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/),
+            name: z.string().min(1).max(200),
+            version: z.string().min(1).max(64),
+            inScopeBehaviours: z.array(z.string().min(1)).min(1),
+            status: z.enum(['draft', 'published', 'deprecated']),
+            publishedAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 422,
+        description: `Semantically invalid request (e.g. PACK_EMPTY)`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+]);
+
+export const api: any = new Zodios(
+  'https://api.ddd-codegen-starter.local/v1',
+  endpoints
+);
+
+export function createApiClient(baseUrl: string, options?: ZodiosOptions): any {
+  return new Zodios(baseUrl, endpoints, options);
+}

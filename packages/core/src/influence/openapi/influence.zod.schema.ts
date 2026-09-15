@@ -1,0 +1,808 @@
+import { makeApi, Zodios, type ZodiosOptions } from '@zodios/core';
+import { z } from 'zod';
+
+const scoreInfluence_Body = z
+  .object({
+    protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+    score: z.number(),
+    reproducible: z.boolean(),
+    breakdown: z.record(z.number()).optional(),
+    attestationHashes: z.array(z.string()).optional(),
+  })
+  .passthrough();
+const InfluenceStatus = z.enum(['pending', 'accepted', 'rejected']);
+const InfluenceScore = z
+  .object({
+    influenceScoreId: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+    contributionId: z.string().regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/),
+    protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+    score: z.number(),
+    status: z.enum(['pending', 'accepted', 'rejected']),
+    reproducible: z.boolean(),
+    breakdown: z.record(z.number()).optional(),
+    reason: z.string().optional(),
+    createdAt: z.string().datetime({ offset: true }),
+    updatedAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const InfluenceScoreCreateRequest = z
+  .object({
+    protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+    score: z.number(),
+    reproducible: z.boolean(),
+    breakdown: z.record(z.number()).optional(),
+    attestationHashes: z.array(z.string()).optional(),
+  })
+  .passthrough();
+const InfluenceRejectRequest = z
+  .object({ reason: z.string().min(1).max(2000) })
+  .passthrough();
+const LedgerEventType = z.enum([
+  'submitted',
+  'scored',
+  'accepted',
+  'rejected',
+  'minted',
+  'clawed_back',
+  'minting_paused',
+  'minting_resumed',
+]);
+const LedgerEvent = z
+  .object({
+    eventId: z.string().regex(/^led_[0-9A-HJKMNP-TV-Z]{26}$/),
+    eventType: z.enum([
+      'submitted',
+      'scored',
+      'accepted',
+      'rejected',
+      'minted',
+      'clawed_back',
+      'minting_paused',
+      'minting_resumed',
+    ]),
+    modelId: z
+      .string()
+      .regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
+    contributionId: z
+      .string()
+      .regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
+    influenceScoreId: z
+      .string()
+      .regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
+    summary: z.string().optional(),
+    occurredAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const ReproducePack = z
+  .object({
+    influenceScoreId: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+    protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+    attestationHashes: z.array(z.string()),
+    aggregateMetrics: z.record(z.number()),
+    generatedAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const InfluenceScoreResponse = z
+  .object({
+    data: z
+      .object({
+        influenceScoreId: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+        contributionId: z.string().regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/),
+        protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+        score: z.number(),
+        status: z.enum(['pending', 'accepted', 'rejected']),
+        reproducible: z.boolean(),
+        breakdown: z.record(z.number()).optional(),
+        reason: z.string().optional(),
+        createdAt: z.string().datetime({ offset: true }),
+        updatedAt: z.string().datetime({ offset: true }),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const LedgerListData = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          eventId: z.string().regex(/^led_[0-9A-HJKMNP-TV-Z]{26}$/),
+          eventType: z.enum([
+            'submitted',
+            'scored',
+            'accepted',
+            'rejected',
+            'minted',
+            'clawed_back',
+            'minting_paused',
+            'minting_resumed',
+          ]),
+          modelId: z
+            .string()
+            .regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/)
+            .optional(),
+          contributionId: z
+            .string()
+            .regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/)
+            .optional(),
+          influenceScoreId: z
+            .string()
+            .regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/)
+            .optional(),
+          summary: z.string().optional(),
+          occurredAt: z.string().datetime({ offset: true }),
+        })
+        .passthrough()
+    ),
+  })
+  .passthrough();
+const LedgerListResponse = z
+  .object({
+    data: z
+      .object({
+        items: z.array(
+          z
+            .object({
+              eventId: z.string().regex(/^led_[0-9A-HJKMNP-TV-Z]{26}$/),
+              eventType: z.enum([
+                'submitted',
+                'scored',
+                'accepted',
+                'rejected',
+                'minted',
+                'clawed_back',
+                'minting_paused',
+                'minting_resumed',
+              ]),
+              modelId: z
+                .string()
+                .regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/)
+                .optional(),
+              contributionId: z
+                .string()
+                .regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/)
+                .optional(),
+              influenceScoreId: z
+                .string()
+                .regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/)
+                .optional(),
+              summary: z.string().optional(),
+              occurredAt: z.string().datetime({ offset: true }),
+            })
+            .passthrough()
+        ),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const ReproducePackResponse = z
+  .object({
+    data: z
+      .object({
+        influenceScoreId: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+        protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+        attestationHashes: z.array(z.string()),
+        aggregateMetrics: z.record(z.number()),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const ContributionId = z.string();
+const Problem = z
+  .object({
+    type: z.string().url(),
+    title: z.string(),
+    status: z.number().int(),
+    detail: z.string(),
+    instance: z.string().url(),
+    code: z.string(),
+  })
+  .partial()
+  .passthrough();
+const InfluenceScoreId = z.string();
+const ProtocolId = z.string();
+const ResponseMeta = z
+  .object({
+    requestId: z.string().uuid(),
+    correlationId: z.string(),
+    generatedAt: z.string().datetime({ offset: true }),
+  })
+  .partial()
+  .passthrough();
+const ModelId = z.string();
+const LedgerEventId = z.string();
+
+export const schemas: any = {
+  scoreInfluence_Body,
+  InfluenceStatus,
+  InfluenceScore,
+  InfluenceScoreCreateRequest,
+  InfluenceRejectRequest,
+  LedgerEventType,
+  LedgerEvent,
+  ReproducePack,
+  InfluenceScoreResponse,
+  LedgerListData,
+  LedgerListResponse,
+  ReproducePackResponse,
+  ContributionId,
+  Problem,
+  InfluenceScoreId,
+  ProtocolId,
+  ResponseMeta,
+  ModelId,
+  LedgerEventId,
+};
+
+const endpoints = makeApi([
+  {
+    method: 'get',
+    path: '/v1/contributions/:contributionId/influence',
+    alias: 'getInfluence',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'contributionId',
+        type: 'Path',
+        schema: z.string().regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            influenceScoreId: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+            contributionId: z.string().regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/),
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            score: z.number(),
+            status: z.enum(['pending', 'accepted', 'rejected']),
+            reproducible: z.boolean(),
+            breakdown: z.record(z.number()).optional(),
+            reason: z.string().optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/contributions/:contributionId/influence',
+    alias: 'scoreInfluence',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: scoreInfluence_Body,
+      },
+      {
+        name: 'contributionId',
+        type: 'Path',
+        schema: z.string().regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            influenceScoreId: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+            contributionId: z.string().regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/),
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            score: z.number(),
+            status: z.enum(['pending', 'accepted', 'rejected']),
+            reproducible: z.boolean(),
+            breakdown: z.record(z.number()).optional(),
+            reason: z.string().optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 400,
+        description: `Malformed request`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 422,
+        description: `Semantically invalid request (e.g. PACK_EMPTY)`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/influence/:influenceScoreId/accept',
+    alias: 'acceptInfluence',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'influenceScoreId',
+        type: 'Path',
+        schema: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            influenceScoreId: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+            contributionId: z.string().regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/),
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            score: z.number(),
+            status: z.enum(['pending', 'accepted', 'rejected']),
+            reproducible: z.boolean(),
+            breakdown: z.record(z.number()).optional(),
+            reason: z.string().optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 422,
+        description: `Semantically invalid request (e.g. PACK_EMPTY)`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/influence/:influenceScoreId/reject',
+    alias: 'rejectInfluence',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: z.object({ reason: z.string().min(1).max(2000) }).passthrough(),
+      },
+      {
+        name: 'influenceScoreId',
+        type: 'Path',
+        schema: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            influenceScoreId: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+            contributionId: z.string().regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/),
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            score: z.number(),
+            status: z.enum(['pending', 'accepted', 'rejected']),
+            reproducible: z.boolean(),
+            breakdown: z.record(z.number()).optional(),
+            reason: z.string().optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 400,
+        description: `Malformed request`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'get',
+    path: '/v1/influence/:influenceScoreId/reproduce-pack',
+    alias: 'getReproducePack',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'influenceScoreId',
+        type: 'Path',
+        schema: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            influenceScoreId: z.string().regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/),
+            protocolId: z.string().regex(/^prt_[0-9A-HJKMNP-TV-Z]{26}$/),
+            attestationHashes: z.array(z.string()),
+            aggregateMetrics: z.record(z.number()),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'get',
+    path: '/v1/influence/ledger',
+    alias: 'listInfluenceLedger',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'cursor',
+        type: 'Query',
+        schema: z.string().optional(),
+      },
+      {
+        name: 'limit',
+        type: 'Query',
+        schema: z.number().int().gte(1).lte(100).optional().default(25),
+      },
+      {
+        name: 'modelId',
+        type: 'Query',
+        schema: z
+          .string()
+          .regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/)
+          .optional(),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            items: z.array(
+              z
+                .object({
+                  eventId: z.string().regex(/^led_[0-9A-HJKMNP-TV-Z]{26}$/),
+                  eventType: z.enum([
+                    'submitted',
+                    'scored',
+                    'accepted',
+                    'rejected',
+                    'minted',
+                    'clawed_back',
+                    'minting_paused',
+                    'minting_resumed',
+                  ]),
+                  modelId: z
+                    .string()
+                    .regex(/^mdl_[0-9A-HJKMNP-TV-Z]{26}$/)
+                    .optional(),
+                  contributionId: z
+                    .string()
+                    .regex(/^ctr_[0-9A-HJKMNP-TV-Z]{26}$/)
+                    .optional(),
+                  influenceScoreId: z
+                    .string()
+                    .regex(/^inf_[0-9A-HJKMNP-TV-Z]{26}$/)
+                    .optional(),
+                  summary: z.string().optional(),
+                  occurredAt: z.string().datetime({ offset: true }),
+                })
+                .passthrough()
+            ),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+]);
+
+export const api: any = new Zodios(
+  'https://api.ddd-codegen-starter.local/v1',
+  endpoints
+);
+
+export function createApiClient(baseUrl: string, options?: ZodiosOptions): any {
+  return new Zodios(baseUrl, endpoints, options);
+}

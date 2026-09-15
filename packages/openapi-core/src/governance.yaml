@@ -1,0 +1,384 @@
+openapi: 3.1.0
+info:
+  title: Shapemint Governance API
+  version: 0.1.0
+  description: |
+    Negative-influence rulings, minting pause/resume, and competitor-isolation transparency grants (BR-7, BR-10, BR-12).
+  license:
+    name: Proprietary
+    url: https://shapemint.local/license
+  x-domain: gov
+servers:
+  - url: https://api.shapemint.local
+    description: Shapemint API
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: Governance
+    description: Pause, poison rulings, and transparency grants
+paths:
+  /v1/governance/negative-influence:
+    get:
+      operationId: listNegativeInfluenceRulings
+      tags: [Governance]
+      summary: List negative-influence rulings (poison queue)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: modelId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ModelId
+      responses:
+        '200':
+          description: Rulings page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RulingListResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: ruleNegativeInfluence
+      tags: [Governance]
+      summary: Record a negative-influence / poison ruling
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NegativeInfluenceRulingCreate'
+      responses:
+        '201':
+          description: Ruling recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RulingResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/governance/minting-pause:
+    post:
+      operationId: pauseMinting
+      tags: [Governance]
+      summary: Pause incentive minting for a model on evaluation drift
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MintingPauseCreate'
+      responses:
+        '201':
+          description: Minting paused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PauseResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/governance/minting-pause/{pauseId}/resume:
+    post:
+      operationId: resumeMinting
+      tags: [Governance]
+      summary: Resume minting after drift investigation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pauseId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/PauseId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      responses:
+        '200':
+          description: Minting resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PauseResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/governance/minting-pauses:
+    get:
+      operationId: listMintingPauses
+      tags: [Governance]
+      summary: List minting pause records
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: modelId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Pauses page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PauseListResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/governance/transparency-grants:
+    get:
+      operationId: listTransparencyGrants
+      tags: [Governance]
+      summary: List competitor-isolation transparency grants
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: modelId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ModelId
+      responses:
+        '200':
+          description: Grants page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrantListResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createTransparencyGrant
+      tags: [Governance]
+      summary: Create a selective transparency grant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransparencyGrantCreate'
+      responses:
+        '201':
+          description: Grant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrantResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth
+
+  schemas:
+    RulingOutcome:
+      type: string
+      enum: [zero_pay, clawback, cleared]
+    NegativeInfluenceRuling:
+      type: object
+      required: [rulingId, contributionId, outcome, createdAt]
+      properties:
+        rulingId:
+          $ref: ./common/primitives.yaml#/components/schemas/RulingId
+        contributionId:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        outcome:
+          $ref: '#/components/schemas/RulingOutcome'
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    NegativeInfluenceRulingCreate:
+      type: object
+      required: [contributionId, outcome]
+      properties:
+        contributionId:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        outcome:
+          $ref: '#/components/schemas/RulingOutcome'
+        reason:
+          type: string
+          maxLength: 2000
+    MintingPause:
+      type: object
+      required: [pauseId, modelId, active, createdAt, updatedAt]
+      properties:
+        pauseId:
+          $ref: ./common/primitives.yaml#/components/schemas/PauseId
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        active:
+          type: boolean
+        reason:
+          type: string
+        resumedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    MintingPauseCreate:
+      type: object
+      required: [modelId, reason]
+      properties:
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    TransparencyGrant:
+      type: object
+      required: [grantId, modelId, granteePartyId, visibleFields, createdAt]
+      properties:
+        grantId:
+          $ref: ./common/primitives.yaml#/components/schemas/GrantId
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        granteePartyId:
+          type: string
+          minLength: 1
+        visibleFields:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+    TransparencyGrantCreate:
+      type: object
+      required: [modelId, granteePartyId, visibleFields]
+      properties:
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        granteePartyId:
+          type: string
+          minLength: 1
+        visibleFields:
+          type: array
+          minItems: 1
+          items:
+            type: string
+    RulingResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/NegativeInfluenceRuling'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    RulingListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NegativeInfluenceRuling'
+    RulingListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/RulingListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    PauseResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/MintingPause'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    PauseListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MintingPause'
+    PauseListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PauseListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    GrantResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/TransparencyGrant'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    GrantListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransparencyGrant'
+    GrantListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/GrantListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

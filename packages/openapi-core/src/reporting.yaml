@@ -1,0 +1,150 @@
+openapi: 3.1.0
+info:
+  title: Shapemint Reporting API
+  version: 0.1.0
+  description: |
+    Audit exports and settlement statement downloads for finance and compliance (BR-4, BR-11).
+  license:
+    name: Proprietary
+    url: https://shapemint.local/license
+  x-domain: rpt
+servers:
+  - url: https://api.shapemint.local
+    description: Shapemint API
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: Reporting
+    description: Audit exports
+paths:
+  /v1/reporting/influence-export:
+    get:
+      operationId: exportInfluenceLedger
+      tags: [Reporting]
+      summary: Export influence ledger for a model and optional period
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: modelId
+          in: query
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        - name: periodStart
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: periodEnd
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Influence export
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfluenceExportResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/reporting/settlement-statements/{statementId}/download:
+    get:
+      operationId: downloadSettlementStatement
+      tags: [Reporting]
+      summary: Download a settlement statement package
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: statementId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/StatementId
+      responses:
+        '200':
+          description: Statement download metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementDownloadResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth
+
+  schemas:
+    InfluenceExportItem:
+      type: object
+      required: [contributionId, score, status, occurredAt]
+      properties:
+        contributionId:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+        influenceScoreId:
+          $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+        score:
+          type: number
+          format: double
+        status:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    InfluenceExport:
+      type: object
+      required: [generatedAt, itemCount, items]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        itemCount:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InfluenceExportItem'
+        notes:
+          type: string
+    StatementDownload:
+      type: object
+      required: [statementId, downloadUrl, expiresAt]
+      properties:
+        statementId:
+          $ref: ./common/primitives.yaml#/components/schemas/StatementId
+        downloadUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+    InfluenceExportResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/InfluenceExport'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    StatementDownloadResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/StatementDownload'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

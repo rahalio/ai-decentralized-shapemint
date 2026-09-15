@@ -1,0 +1,545 @@
+openapi: 3.1.0
+info:
+  title: Shapemint Incentives API
+  version: 0.1.0
+  description: |
+    Incentive policies, minting, obligations, clawbacks, and settlement statements (BR-3, BR-11).
+  license:
+    name: Proprietary
+    url: https://shapemint.local/license
+  x-domain: inc
+servers:
+  - url: https://api.shapemint.local
+    description: Shapemint API
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: Incentives
+    description: Policy-mapped rewards and statements
+paths:
+  /v1/incentive-policies:
+    get:
+      operationId: listIncentivePolicies
+      tags: [Incentives]
+      summary: List incentive policies
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: modelId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ModelId
+      responses:
+        '200':
+          description: Policies page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyListResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createIncentivePolicy
+      tags: [Incentives]
+      summary: Create an incentive policy with influence bands
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyCreateRequest'
+      responses:
+        '201':
+          description: Policy created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/incentive-policies/{policyId}:
+    get:
+      operationId: getIncentivePolicy
+      tags: [Incentives]
+      summary: Get incentive policy
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/PolicyId
+      responses:
+        '200':
+          description: Policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/incentive-policies/{policyId}/accept:
+    post:
+      operationId: acceptIncentivePolicy
+      tags: [Incentives]
+      summary: Contributor accepts policy pre-work (BR-3)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/PolicyId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyAcceptRequest'
+      responses:
+        '200':
+          description: Acceptance recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyAcceptanceResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/incentives:
+    get:
+      operationId: listIncentives
+      tags: [Incentives]
+      summary: List incentive obligations
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ObligationStatus'
+      responses:
+        '200':
+          description: Obligations page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObligationListResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: mintIncentive
+      tags: [Incentives]
+      summary: Mint incentive obligation from accepted influence score
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncentiveMintRequest'
+      responses:
+        '201':
+          description: Obligation minted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObligationResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '422':
+          $ref: ./common/responses.yaml#/components/responses/UnprocessableEntity
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/incentives/{obligationId}/clawback:
+    post:
+      operationId: clawbackIncentive
+      tags: [Incentives]
+      summary: Claw back a paid or pending obligation under ruling
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: obligationId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ObligationId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClawbackRequest'
+      responses:
+        '200':
+          description: Obligation clawed back
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObligationResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '422':
+          $ref: ./common/responses.yaml#/components/responses/UnprocessableEntity
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/settlement-statements:
+    get:
+      operationId: listSettlementStatements
+      tags: [Incentives]
+      summary: List settlement statements
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+      responses:
+        '200':
+          description: Statements page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementListResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createSettlementStatement
+      tags: [Incentives]
+      summary: Close a period settlement statement (score to amount lines)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatementCreateRequest'
+      responses:
+        '201':
+          description: Statement created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/settlement-statements/{statementId}:
+    get:
+      operationId: getSettlementStatement
+      tags: [Incentives]
+      summary: Get settlement statement with score-to-amount lines
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: statementId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/StatementId
+      responses:
+        '200':
+          description: Statement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth
+
+  schemas:
+    ObligationStatus:
+      type: string
+      enum: [pending, paid, clawed_back]
+    InfluenceBand:
+      type: object
+      required: [minScore, maxScore, payout]
+      properties:
+        minScore:
+          type: number
+          format: double
+        maxScore:
+          type: number
+          format: double
+        payout:
+          $ref: ./common/primitives.yaml#/components/schemas/Money
+    IncentivePolicy:
+      type: object
+      required: [policyId, modelId, name, bands, status, createdAt, updatedAt]
+      properties:
+        policyId:
+          $ref: ./common/primitives.yaml#/components/schemas/PolicyId
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        bands:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/InfluenceBand'
+        status:
+          type: string
+          enum: [draft, active, retired]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PolicyCreateRequest:
+      type: object
+      required: [modelId, name, bands]
+      properties:
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        bands:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/InfluenceBand'
+    PolicyAcceptRequest:
+      type: object
+      required: [contributorId]
+      properties:
+        contributorId:
+          $ref: ./common/primitives.yaml#/components/schemas/UserId
+    PolicyAcceptance:
+      type: object
+      required: [policyId, contributorId, acceptedAt]
+      properties:
+        policyId:
+          $ref: ./common/primitives.yaml#/components/schemas/PolicyId
+        contributorId:
+          $ref: ./common/primitives.yaml#/components/schemas/UserId
+        acceptedAt:
+          type: string
+          format: date-time
+    IncentiveObligation:
+      type: object
+      required: [obligationId, contributionId, influenceScoreId, policyId, amount, status, createdAt, updatedAt]
+      properties:
+        obligationId:
+          $ref: ./common/primitives.yaml#/components/schemas/ObligationId
+        contributionId:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+        influenceScoreId:
+          $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+        policyId:
+          $ref: ./common/primitives.yaml#/components/schemas/PolicyId
+        amount:
+          $ref: ./common/primitives.yaml#/components/schemas/Money
+        status:
+          $ref: '#/components/schemas/ObligationStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    IncentiveMintRequest:
+      type: object
+      required: [contributionId, policyId, influenceScoreId]
+      properties:
+        contributionId:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+        policyId:
+          $ref: ./common/primitives.yaml#/components/schemas/PolicyId
+        influenceScoreId:
+          $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+    ClawbackRequest:
+      type: object
+      required: [rulingId, reason]
+      properties:
+        rulingId:
+          $ref: ./common/primitives.yaml#/components/schemas/RulingId
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    SettlementLine:
+      type: object
+      required: [contributionId, influenceScoreId, score, amount]
+      properties:
+        contributionId:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+        influenceScoreId:
+          $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+        score:
+          type: number
+          format: double
+        amount:
+          $ref: ./common/primitives.yaml#/components/schemas/Money
+    SettlementStatement:
+      type: object
+      required: [statementId, modelId, periodStart, periodEnd, lines, total, createdAt]
+      properties:
+        statementId:
+          $ref: ./common/primitives.yaml#/components/schemas/StatementId
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/SettlementLine'
+        total:
+          $ref: ./common/primitives.yaml#/components/schemas/Money
+        createdAt:
+          type: string
+          format: date-time
+    StatementCreateRequest:
+      type: object
+      required: [modelId, periodStart, periodEnd]
+      properties:
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+    PolicyResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/IncentivePolicy'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    PolicyListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncentivePolicy'
+    PolicyListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PolicyListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    PolicyAcceptanceResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/PolicyAcceptance'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    ObligationResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/IncentiveObligation'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    ObligationListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncentiveObligation'
+    ObligationListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ObligationListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    StatementResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SettlementStatement'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    StatementListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SettlementStatement'
+    StatementListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/StatementListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

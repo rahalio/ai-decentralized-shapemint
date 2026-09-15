@@ -1,0 +1,32 @@
+{
+  "name": "shapemint",
+  "version": "0.1.0",
+  "description": "Shapemint \u2014 influence-and-incentive ledger (OpenAPI-first DDD)",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:openapi": "pnpm --filter @shapemint/openapi-core lint:domains",
+    "bundle:openapi": "pnpm --filter @shapemint/openapi-core bundle:domains",
+    "build": "pnpm --filter @shapemint/core build && pnpm --filter @shapemint/services build && pnpm --filter @shapemint/adapters build && pnpm --filter @shapemint/api-server build",
+    "dev:api": "pnpm --filter @shapemint/api-server dev",
+    "codegen:core": "node scripts/sync-codegen-paths.mjs && PYTHONPATH=.codegen/codegen/src python3 -m zero_codegen.cli.main generate --all --layers core --config .codegen/.zero-codegen-merged.json --skip-build",
+    "codegen:identity": "node scripts/sync-codegen-paths.mjs && PYTHONPATH=.codegen/codegen/src python3 -m zero_codegen.cli.main generate --domain identity --config .codegen/.zero-codegen-merged.json --skip-build",
+    "codegen:paths": "node scripts/sync-codegen-paths.mjs",
+    "codegen:domain": "node scripts/sync-codegen-paths.mjs && PYTHONPATH=.codegen/codegen/src python3 -m zero_codegen.cli.main generate --config .codegen/.zero-codegen-merged.json --skip-build",
+    "dev:web": "pnpm --filter @shapemint/webapp dev",
+    "build:web": "pnpm --filter @shapemint/webapp build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.55.0"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9.0.0"
+  }
+}

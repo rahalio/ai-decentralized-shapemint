@@ -1,0 +1,222 @@
+openapi: 3.1.0
+info:
+  title: Shapemint Models API
+  version: 0.1.0
+  description: |
+    Consortium model registry entries bound to evaluation protocols and minting controls.
+  license:
+    name: Proprietary
+    url: https://shapemint.local/license
+  x-domain: mdl
+servers:
+  - url: https://api.shapemint.local
+    description: Shapemint API
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: Models
+    description: Model registry entries
+paths:
+  /v1/models:
+    get:
+      operationId: listModels
+      tags: [Models]
+      summary: List model registry entries
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, archived]
+      responses:
+        '200':
+          description: Models page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelListResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createModel
+      tags: [Models]
+      summary: Register a model registry entry
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelCreateRequest'
+      responses:
+        '201':
+          description: Model created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/models/{modelId}:
+    parameters:
+      - name: modelId
+        in: path
+        required: true
+        schema:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+    get:
+      operationId: getModel
+      tags: [Models]
+      summary: Get model registry entry
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    patch:
+      operationId: updateModel
+      tags: [Models]
+      summary: Update model metadata
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelUpdateRequest'
+      responses:
+        '200':
+          description: Updated model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth
+  schemas:
+    ModelStatus:
+      type: string
+      enum: [active, archived]
+    ModelRegistryEntry:
+      type: object
+      required: [modelId, name, status, createdAt, updatedAt]
+      properties:
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        externalRegistryRef:
+          type: string
+          description: Optional pointer into the consortium MLOps registry
+        status:
+          $ref: '#/components/schemas/ModelStatus'
+        activeProtocolId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProtocolId
+        mintingPaused:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ModelCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        externalRegistryRef:
+          type: string
+    ModelUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        externalRegistryRef:
+          type: string
+        status:
+          $ref: '#/components/schemas/ModelStatus'
+        activeProtocolId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProtocolId
+    ModelResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ModelRegistryEntry'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    ModelListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelRegistryEntry'
+    ModelListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ModelListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

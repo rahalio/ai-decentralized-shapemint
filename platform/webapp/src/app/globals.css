@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ink: #e8eef2;
+  --color-assay-950: #0b1218;
+  --color-assay-900: #141c26;
+  --color-assay-700: #2a3848;
+  --color-mint: #3dcc8c;
+  --color-mint-dim: #1f6b4a;
+  --color-amber: #e0a045;
+  --color-coral: #e85d4c;
+  --color-steel: #7a93a8;
+  --color-brand: #9fd9b8;
+  --font-display: var(--font-body), system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --motion-mint: 180ms ease-out;
+  --motion-score: 200ms ease-out;
+  --motion-pause: 240ms ease-in-out;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--color-ink);
+  background-color: var(--color-assay-950);
+  background-image:
+    linear-gradient(rgba(42, 56, 72, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42, 56, 72, 0.35) 1px, transparent 1px),
+    radial-gradient(ellipse 70% 45% at 15% -10%, rgba(61, 204, 140, 0.12), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(232, 93, 76, 0.08), transparent 50%);
+  background-size: 48px 48px, 48px 48px, auto, auto;
+  font-family: var(--font-display);
+}
+
+@keyframes mint-flash {
+  from { box-shadow: 0 0 0 0 rgba(61, 204, 140, 0.45); }
+  to { box-shadow: 0 0 0 12px rgba(61, 204, 140, 0); }
+}
+
+@keyframes pause-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes score-land {
+  from { transform: translateY(6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.mint-flash { animation: mint-flash var(--motion-mint); }
+.pause-pulse { animation: pause-pulse var(--motion-pause) infinite; }
+.score-land { animation: score-land var(--motion-score); }

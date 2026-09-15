@@ -1,0 +1,226 @@
+openapi: 3.1.0
+info:
+  title: Shapemint Contributions API
+  version: 0.1.0
+  description: |
+    Contribution intake: model updates, data refs, and HITL batches with privacy mode and policy acceptance (BR-3, BR-5, BR-6).
+  license:
+    name: Proprietary
+    url: https://shapemint.local/license
+  x-domain: ctr
+servers:
+  - url: https://api.shapemint.local
+    description: Shapemint API
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: Contributions
+    description: Model updates, data refs, HITL batches
+paths:
+  /v1/contributions:
+    get:
+      operationId: listContributions
+      tags: [Contributions]
+      summary: List contributions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: modelId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ContributionStatus'
+        - name: kind
+          in: query
+          schema:
+            $ref: '#/components/schemas/ContributionKind'
+      responses:
+        '200':
+          description: Contributions page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributionListResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: submitContribution
+      tags: [Contributions]
+      summary: Submit a contribution (requires prior policy acceptance)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributionCreateRequest'
+      responses:
+        '201':
+          description: Contribution submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributionResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '422':
+          $ref: ./common/responses.yaml#/components/responses/UnprocessableEntity
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/contributions/{contributionId}:
+    parameters:
+      - name: contributionId
+        in: path
+        required: true
+        schema:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+    get:
+      operationId: getContribution
+      tags: [Contributions]
+      summary: Get contribution
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Contribution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributionResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/contributions/drafts:
+    post:
+      operationId: saveContributionDraft
+      tags: [Contributions]
+      summary: Save a contribution draft without submitting
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributionCreateRequest'
+      responses:
+        '201':
+          description: Draft saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributionResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth
+
+  schemas:
+    ContributionKind:
+      type: string
+      enum: [model_update, data_ref, hitl_batch]
+    ContributionStatus:
+      type: string
+      enum: [draft, submitted, scoring, accepted, rejected, withdrawn]
+    Contribution:
+      type: object
+      required: [contributionId, modelId, contributorId, kind, status, privacyMode, policyAccepted, createdAt, updatedAt]
+      properties:
+        contributionId:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        contributorId:
+          $ref: ./common/primitives.yaml#/components/schemas/UserId
+        kind:
+          $ref: '#/components/schemas/ContributionKind'
+        status:
+          $ref: '#/components/schemas/ContributionStatus'
+        privacyMode:
+          type: boolean
+          description: When true, raw datasets are never disclosed (BR-5)
+        artefactRef:
+          type: string
+          description: Reference to artefact; omitted or opaque under privacy mode
+        policyId:
+          $ref: ./common/primitives.yaml#/components/schemas/PolicyId
+        policyAccepted:
+          type: boolean
+        policyAcceptedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ContributionCreateRequest:
+      type: object
+      required: [modelId, kind, contributorId, privacyMode, policyId, policyAccepted]
+      properties:
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        kind:
+          $ref: '#/components/schemas/ContributionKind'
+        contributorId:
+          $ref: ./common/primitives.yaml#/components/schemas/UserId
+        privacyMode:
+          type: boolean
+        artefactRef:
+          type: string
+        policyId:
+          $ref: ./common/primitives.yaml#/components/schemas/PolicyId
+        policyAccepted:
+          type: boolean
+          description: Must be true to submit (BR-3)
+    ContributionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Contribution'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    ContributionListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Contribution'
+    ContributionListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ContributionListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

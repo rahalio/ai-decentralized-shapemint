@@ -1,0 +1,91 @@
+openapi: 3.1.0
+info:
+  title: Shared primitives
+  version: 0.1.0
+  description: Prefixed IDs and money types shared across domains.
+paths: {}
+components:
+  schemas:
+    TenantId:
+      type: string
+      description: Prefixed ULID-style tenant identifier.
+      pattern: '^tnt_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: tnt_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    UserId:
+      type: string
+      description: Prefixed ULID-style tenant operator user identifier.
+      pattern: '^usr_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: usr_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    Currency:
+      type: string
+      description: ISO 4217 currency code.
+      minLength: 3
+      maxLength: 3
+      pattern: '^[A-Z]{3}$'
+      example: USD
+    Money:
+      type: object
+      description: Decimal-string amount + currency (never IEEE float).
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: string
+          description: Signed decimal string with up to 5 fractional digits.
+          pattern: '^-?\d+(\.\d{1,5})?$'
+          example: "1234.56"
+        currency:
+          $ref: '#/components/schemas/Currency'
+    JobStatus:
+      type: string
+      description: Generic async job lifecycle.
+      enum:
+        - queued
+        - running
+        - done
+        - failed
+    ModelId:
+      type: string
+      description: Prefixed model registry identifier.
+      pattern: '^mdl_[0-9A-HJKMNP-TV-Z]{26}$'
+    ContributionId:
+      type: string
+      description: Prefixed contribution identifier.
+      pattern: '^ctr_[0-9A-HJKMNP-TV-Z]{26}$'
+    ProtocolId:
+      type: string
+      description: Prefixed evaluation protocol identifier.
+      pattern: '^prt_[0-9A-HJKMNP-TV-Z]{26}$'
+    InfluenceScoreId:
+      type: string
+      description: Prefixed influence score identifier.
+      pattern: '^inf_[0-9A-HJKMNP-TV-Z]{26}$'
+    PolicyId:
+      type: string
+      description: Prefixed incentive policy identifier.
+      pattern: '^pol_[0-9A-HJKMNP-TV-Z]{26}$'
+    ObligationId:
+      type: string
+      description: Prefixed incentive obligation identifier.
+      pattern: '^obl_[0-9A-HJKMNP-TV-Z]{26}$'
+    RulingId:
+      type: string
+      description: Prefixed negative-influence ruling identifier.
+      pattern: '^rul_[0-9A-HJKMNP-TV-Z]{26}$'
+    PauseId:
+      type: string
+      description: Prefixed minting-pause identifier.
+      pattern: '^pse_[0-9A-HJKMNP-TV-Z]{26}$'
+    GrantId:
+      type: string
+      description: Prefixed transparency grant identifier.
+      pattern: '^grn_[0-9A-HJKMNP-TV-Z]{26}$'
+    StatementId:
+      type: string
+      description: Prefixed settlement statement identifier.
+      pattern: '^stm_[0-9A-HJKMNP-TV-Z]{26}$'
+    LedgerEventId:
+      type: string
+      description: Prefixed ledger activity event identifier.
+      pattern: '^led_[0-9A-HJKMNP-TV-Z]{26}$'

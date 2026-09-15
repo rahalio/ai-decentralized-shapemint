@@ -1,0 +1,338 @@
+openapi: 3.1.0
+info:
+  title: Shapemint Influence API
+  version: 0.1.0
+  description: |
+    Quantified influence scores, accept/reject workflow, append-only ledger, and reproduce packs (BR-1, BR-2, BR-4, BR-9).
+  license:
+    name: Proprietary
+    url: https://shapemint.local/license
+  x-domain: inf
+servers:
+  - url: https://api.shapemint.local
+    description: Shapemint API
+security:
+  - bearerAuth: []
+  - apiKey: []
+tags:
+  - name: Influence
+    description: Quantified influence scores and ledger
+paths:
+  /v1/contributions/{contributionId}/influence:
+    parameters:
+      - name: contributionId
+        in: path
+        required: true
+        schema:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+    get:
+      operationId: getInfluence
+      tags: [Influence]
+      summary: Get influence score for a contribution
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Influence score
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfluenceScoreResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: scoreInfluence
+      tags: [Influence]
+      summary: Record a quantified influence score (harness)
+      security:
+        - apiKey: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfluenceScoreCreateRequest'
+      responses:
+        '201':
+          description: Score recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfluenceScoreResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '422':
+          $ref: ./common/responses.yaml#/components/responses/UnprocessableEntity
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/influence/{influenceScoreId}/accept:
+    post:
+      operationId: acceptInfluence
+      tags: [Influence]
+      summary: Accept a pending influence score
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: influenceScoreId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      responses:
+        '200':
+          description: Score accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfluenceScoreResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '422':
+          $ref: ./common/responses.yaml#/components/responses/UnprocessableEntity
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/influence/{influenceScoreId}/reject:
+    post:
+      operationId: rejectInfluence
+      tags: [Influence]
+      summary: Reject a pending influence score with reason
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: influenceScoreId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InfluenceRejectRequest'
+      responses:
+        '200':
+          description: Score rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InfluenceScoreResponse'
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/influence/ledger:
+    get:
+      operationId: listInfluenceLedger
+      tags: [Influence]
+      summary: Append-only influence activity ledger for authorised parties
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/Cursor
+        - $ref: ./common/parameters.yaml#/components/parameters/Limit
+        - name: modelId
+          in: query
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ModelId
+      responses:
+        '200':
+          description: Ledger events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LedgerListResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+  /v1/influence/{influenceScoreId}/reproduce-pack:
+    get:
+      operationId: getReproducePack
+      tags: [Influence]
+      summary: Get reproducibility pack (hashes/aggregates only — no raw data)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: influenceScoreId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+      responses:
+        '200':
+          description: Reproduce pack
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReproducePackResponse'
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
+    bearerAuth:
+      $ref: ./common/security.yaml#/components/securitySchemes/bearerAuth
+
+  schemas:
+    InfluenceStatus:
+      type: string
+      enum: [pending, accepted, rejected]
+    InfluenceScore:
+      type: object
+      required: [influenceScoreId, contributionId, protocolId, score, status, reproducible, createdAt, updatedAt]
+      properties:
+        influenceScoreId:
+          $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+        contributionId:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+        protocolId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProtocolId
+        score:
+          type: number
+          format: double
+          description: Quantified behavioural influence
+        status:
+          $ref: '#/components/schemas/InfluenceStatus'
+        reproducible:
+          type: boolean
+        breakdown:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          description: Per in-scope behaviour deltas
+        reason:
+          type: string
+          description: Accept/reject reason when applicable (BR-9)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    InfluenceScoreCreateRequest:
+      type: object
+      required: [protocolId, score, reproducible]
+      properties:
+        protocolId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProtocolId
+        score:
+          type: number
+          format: double
+        reproducible:
+          type: boolean
+        breakdown:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        attestationHashes:
+          type: array
+          items:
+            type: string
+    InfluenceRejectRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    LedgerEventType:
+      type: string
+      enum: [submitted, scored, accepted, rejected, minted, clawed_back, minting_paused, minting_resumed]
+    LedgerEvent:
+      type: object
+      required: [eventId, eventType, occurredAt]
+      properties:
+        eventId:
+          $ref: ./common/primitives.yaml#/components/schemas/LedgerEventId
+        eventType:
+          $ref: '#/components/schemas/LedgerEventType'
+        modelId:
+          $ref: ./common/primitives.yaml#/components/schemas/ModelId
+        contributionId:
+          $ref: ./common/primitives.yaml#/components/schemas/ContributionId
+        influenceScoreId:
+          $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+        summary:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    ReproducePack:
+      type: object
+      required: [influenceScoreId, protocolId, attestationHashes, aggregateMetrics, generatedAt]
+      properties:
+        influenceScoreId:
+          $ref: ./common/primitives.yaml#/components/schemas/InfluenceScoreId
+        protocolId:
+          $ref: ./common/primitives.yaml#/components/schemas/ProtocolId
+        attestationHashes:
+          type: array
+          items:
+            type: string
+        aggregateMetrics:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        generatedAt:
+          type: string
+          format: date-time
+    InfluenceScoreResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/InfluenceScore'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    LedgerListData:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerEvent'
+    LedgerListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/LedgerListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+    ReproducePackResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ReproducePack'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
